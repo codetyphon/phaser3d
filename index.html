@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>phaser3d demo</title>
+    <link rel="stylesheet" href="lib/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/style.css?ver=1.0.0" />
+    <script src="lib/phaser.min.js?ver=3.52.0"></script>
+    <script src="lib/enable3d.phaserExtension.0.23.0.min.js"></script>
+    <script src="lib/bootstrap.min.js"></script>
+    <script src="js/game.js"></script>
+</head>
+
+<body>
+    <div class="mask" id="mask"></div>
+    <div class="full" id="full">
+        <div class="card" id="start" style="width: 18rem;">
+            <div class="card-body">
+                <h5 class="card-title">小蓝吃小黄 小红不能吃</h5>
+                <p class="card-text">W、S、A、D为方向键，按空格跳跃。</p>
+                <button id="btn_start" type="button" class="btn btn-primary">猛击此处开始</button>
+            </div>
+        </div>
+        <div class="card" id="gameover" style="width: 18rem;">
+            <div class="card-body">
+                <h5 class="card-title">GAME OVER</h5>
+                <p class="card-text">W、S、A、D为方向键，按空格跳跃。</p>
+                <button id="btn_restart" type="button" class="btn btn-primary">再来一次</button>
+            </div>
+        </div>
+        <div class="card" id="pause" style="width: 18rem;">
+            <div class="card-body">
+                <h5 class="card-title">暂停</h5>
+                <p class="card-text"></p>
+                <button id="btn_resume" type="button" class="btn btn-primary">继续</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const {
+            enable3d,
+            Scene3D,
+            Canvas,
+            THREE,
+            ExtendedObject3D
+        } = ENABLE3D
+
+        function randomInteger(min, max) {
+            const arr = []
+            for (let index = min; index <= max; index++) {
+                arr.push(index)
+            }
+            arr.sort(function () {
+                return Math.random() - 0.5;
+            })
+            return arr[0]
+        }
+
+        class MainScene extends Scene3D {
+            constructor() {
+                super({
+                    key: 'MainScene'
+                })
+            }
+
+            init() {
+                this.accessThirdDimension()
+            }
+
+            async create() {
+                this.third.warpSpeed()
+                // this.third.warpSpeed('light', 'camera', 'sky', 'orbitControls')
+                this.third.camera.position.set(20, 20, 20)
+                this.third.camera.lookAt(0, 0, 0)
+                // this.third.physics.debug.enable()
+
+                this.is_gameover = false
+                this.is_looping = false
+                this.is_pause = false
+                this.score = 0
+
+                document.getElementById("start").style.display = "block"
+                document.getElementById("gameover").style.display = "none"
+                document.getElementById("pause").style.display = "none"
+
+                document.getElementById("btn_start").addEventListener('click', () => {
+                    this.is_looping = true
+                    document.getElementById("mask").style.display = "none"
+                    document.getElementById("full").style.display = "none"
+                })
+
+                document.getElementById("btn_restart").addEventListener('click', () => {
+                    this.scene.restart()
+                    document.getElementById("mask").style.display = "none"
+                    document.getElementById("full").style.display = "none"
+                    setTimeout(() => {
+                        this.is_looping = true
+                    }, 200)
+                })
+
+                document.getElementById("btn_resume").addEventListener('click', () => {
+                    this.scene.resume()
+                    document.getElementById("mask").style.display = "none"
+                    document.getElementById("full").style.display = "none"
+                })
+
+                this.keys = {
+                    w: this.input.keyboard.addKey('w'),
+                    a: this.input.keyboard.addKey('a'),
+                    d: this.input.keyboard.addKey('d'),
+                    s: this.input.keyboard.addKey('s'),
+                    space: this.input.keyboard.addKey('space'),
+                    p: this.input.keyboard.addKey('p')
+                }
+
+                this.scoreText = this.add.text(32, 64, 'score: 0', {
+                    fontSize: '32px',
+                    fill: '#000'
+                })
+                this.scoreText.setOrigin(0, 1)
+                this.scoreText.depth = 2
+
+                this.hero = this.third.physics.add.box({
+                    name: 'hero',
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    width: 1,
+                    height: 1,
+                    depth: 1
+                }, {
+                    lambert: {
+                        color: 0x0000ff
+                    }
+                })
+
+                this.hero.body.on.collision((otherObject, event) => {
+                    if (/food/.test(otherObject.name)) {
+                        this.score += 1
+                        this.scoreText.setText(`score: ${this.score}`)
+                        this.third.physics.destroy(otherObject)
+                        otherObject.visible = false
+                    }
+                    if (/enemy/.test(otherObject.name)) {
+                        console.log('wc')
+                        this.is_gameover = true
+                    }
+                })
+
+                this.time.addEvent({
+                    delay: 200,
+                    loop: true,
+                    callback: () => {
+                        if (!this.is_gameover && this.is_looping && !this.is_pause) {
+                            this.third.physics.add.box({
+                                name: `food_${Date.now()}`,
+                                x: randomInteger(-5, 5),
+                                y: 100,
+                                z: randomInteger(-5, 5),
+                                width: 1,
+                                height: 1,
+                                depth: 1
+                            }, {
+                                lambert: {
+                                    color: 0xfae340
+                                }
+                            })
+                        }
+                    }
+                })
+
+                this.time.addEvent({
+                    delay: 2000,
+                    loop: true,
+                    callback: () => {
+                        if (!this.is_gameover && this.is_looping && !this.is_pause) {
+                            this.third.physics.add.box({
+                                name: `enemy_${Date.now()}`,
+                                x: randomInteger(-5, 5),
+                                y: 100,
+                                z: randomInteger(-5, 5),
+                                width: 1,
+                                height: 1,
+                                depth: 1
+                            }, {
+                                lambert: {
+                                    color: 0xff0000
+                                }
+                            })
+                        }
+                    }
+                })
+            }
+
+            async update() {
+                // key event
+                if (this.hero && !this.is_gameover && this.is_looping && !this.is_pause) {
+                    if (this.keys.w.isUp) {
+                        this.hero.body.setVelocityX(0)
+                    }
+                    if (this.keys.s.isUp) {
+                        this.hero.body.setVelocityX(0)
+                    }
+                    if (this.keys.a.isUp) {
+                        this.hero.body.setVelocityZ(0)
+                    }
+                    if (this.keys.d.isUp) {
+                        this.hero.body.setVelocityZ(0)
+                    }
+                    if (this.keys.p.isDown) {
+                        document.getElementById("mask").style.display = "flex"
+                        document.getElementById("full").style.display = "flex"
+                        document.getElementById("gameover").style.display = "none"
+                        document.getElementById("start").style.display = "none"
+                        document.getElementById("pause").style.display = "block"
+                        this.scene.pause()
+                    }
+                    if (this.keys.space.isDown) {
+                        this.hero.body.setVelocityY(10)
+                    }
+                    if (this.keys.w.isDown) {
+                        this.hero.body.setVelocityZ(-5)
+                    }
+                    if (this.keys.s.isDown) {
+                        this.hero.body.setVelocityZ(5)
+                    }
+                    if (this.keys.a.isDown) {
+                        this.hero.body.setVelocityX(-5)
+                    }
+                    if (this.keys.d.isDown) {
+                        this.hero.body.setVelocityX(5)
+                    }
+                    if (this.hero.position.y <= -200) {
+                        console.log('gameover')
+                        this.is_gameover = true
+                    }
+                }
+                if (this.is_gameover) {
+                    document.getElementById("mask").style.display = "flex"
+                    document.getElementById("full").style.display = "flex"
+                    document.getElementById("gameover").style.display = "block"
+                    document.getElementById("start").style.display = "none"
+                    document.getElementById("pause").style.display = "none"
+                    this.scene.pause()
+                }
+            }
+        }
+
+        const config = {
+            type: Phaser.WEBGL,
+            transparent: true,
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                width: window.innerWidth * Math.max(1, window.devicePixelRatio / 2),
+                height: window.innerHeight * Math.max(1, window.devicePixelRatio / 2)
+            },
+            scene: [MainScene],
+            ...Canvas()
+        }
+
+        window.addEventListener('load', () => {
+            enable3d(() => new Phaser.Game(config)).withPhysics('/lib/ammo/kripken')
+        })
+    </script>
+</body>
+
+</html>

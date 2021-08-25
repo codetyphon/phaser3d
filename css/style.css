@@ -1,0 +1,37 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+.mask {
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 888;
+    background-color: black;
+    opacity: 0.7;
+}
+.full {
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    justify-content: center;
+    place-items: center;
+}
+.card{
+    display: none;
+}
+.card-body{
+    display: flex;
+    flex-direction: column;
+}
+#gameover{
+    opacity: 0.5;
+}
